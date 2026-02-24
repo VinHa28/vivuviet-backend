@@ -1,0 +1,39 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Environment variables (QUAN TRỌNG: Không bao giờ commit file này)
+.env
+.env.test
+.env.production
+.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build/Dist folders (nếu bạn dùng TypeScript hoặc Babel)
+dist/
+build/
+out/
+
+# Testing
+coverage/
+.nyc_output
+
+# Temporary files
+.temp/
+.tmp/
