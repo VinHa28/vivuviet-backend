@@ -51,3 +51,12 @@ export const createPartnerService = async (req, res) => {
     });
   }
 };
+
+export const getAllServices = async (req, res) => {
+  try {
+    const services = await serviceModel.find();
+    res.status(200).json(services);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching services", error });
+  }
+};
