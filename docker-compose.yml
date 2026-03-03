@@ -8,10 +8,9 @@ services:
     ports:
       - "5000:5000"
     env_file:
-      - .env
+      - .env.production
     environment:
       - NODE_ENV=production
-    # Thêm networks nếu bạn muốn backend và frontend giao tiếp nội bộ tốt hơn
     networks:
       - vivuviet-network
 

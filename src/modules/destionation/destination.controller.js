@@ -9,7 +9,6 @@ export const getDestinationContent = async (req, res) => {
       code: code,
       isActive: true,
     });
-    console.log(destination);
     if (!destination) {
       return res.status(404).json({ message: "Không tìm thấy địa điểm này" });
     }
