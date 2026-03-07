@@ -9,10 +9,12 @@ import {
   getPartnerService,
   getPartnerStats,
 } from "./admin.controller.js";
+import { loginAdmin } from "../auth/auth.controller.js";
 
 const router = express.Router();
 
 router.get("/stats", protect, adminOnly, getAdminStats);
+router.post("/login", loginAdmin);
 
 router.get("/services", protect, adminOnly, adminGetServices);
 router.get("/partners", protect, adminOnly, getAllPartners);

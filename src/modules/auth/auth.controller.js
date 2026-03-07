@@ -1,6 +1,7 @@
 import User from "../user/user.model.js";
 import generateToken from "../../utils/generateToken.js";
 import { successResponse, errorResponse } from "../../utils/responseHelper.js";
+import userModel from "../user/user.model.js";
 
 export const loginAdmin = async (req, res) => {
   try {
@@ -110,3 +111,58 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
+export const registerPartner = async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      businessName,
+      phone,
+      website,
+      fanpage,
+      partnerTier,
+    } = req.body;
+
+    const existingUser = await userModel.findOne({
+      $or: [{ email }, { phone }],
+    });
+
+    if (existingUser) {
+      if (existingUser.email === email)
+        return errorResponse(res, "Email này đã được sử dụng", 400);
+      if (existingUser.phone === phone)
+        return errorResponse(res, "Số điện thoại đã được sử dụng", 400);
+    }
+
+    const newUser = new userModel({
+      email,
+      password,
+      businessName,
+      phone,
+      website,
+      fanpage,
+      partnerTier,
+      registrationDate: new Date(),
+    });
+
+    await newUser.save();
+
+    return successResponse(
+      res,
+      {
+        user: {
+          id: newUser._id,
+          email: newUser.email,
+          role: newUser.role,
+          partnerTier: newUser.partnerTier,
+          status: newUser.status,
+        },
+      },
+      "Đăng ký thành công, hãy kiểm tra email của bạn!",
+      201,
+    );
+  } catch (error) {
+    console.error("Error registering partner:", error);
+    return errorResponse(res, "Lỗi hệ thống", 500, error);
+  }
+};

@@ -27,6 +27,7 @@ const notificationSchema = new mongoose.Schema(
         "POST_APPROVE",
         "POST_REJECT",
         "NEW_PROPOSAL",
+        "NEW_PARTNER",
         "SYSTEM",
       ],
       required: true,

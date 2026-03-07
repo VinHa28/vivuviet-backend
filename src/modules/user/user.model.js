@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["peding", "active", "inactive"],
+      enum: ["pending", "active", "inactive"],
       default: "pending",
     },
     businessName: String,
@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema(
     fanpage: String,
     registrationDate: Date,
     priorityRate: { type: Number, default: 1 },
+    subscription: {
+      startDate: Date,
+      endDate: Date,
+      isAutoRenew: { type: Boolean, default: false },
+    },
+    lastPaymentDate: Date,
   },
   { timestamps: true },
 );

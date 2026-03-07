@@ -50,7 +50,7 @@ export const getAcitveDestinations = async (req, res) => {
 
     res.status(200).json(destinations);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       message: "Lỗi hẹ thống khi lấy danh sách tỉnh thành",
       error: error.message,
