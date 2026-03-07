@@ -1,7 +1,7 @@
-import User from "../user/user.model.js";
 import generateToken from "../../utils/generateToken.js";
 import { successResponse, errorResponse } from "../../utils/responseHelper.js";
 import userModel from "../user/user.model.js";
+import { createNotificaiton } from "../notification/notification.service.js";
 
 export const loginAdmin = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ export const loginAdmin = async (req, res) => {
       return errorResponse(res, "Email và mật khẩu là bắt buộc", 400);
     }
 
-    const user = await User.findOne({ email });
+    const user = await userModel.findOne({ email });
 
     if (!user)
       return errorResponse(res, "Thông tin đăng nhập không chính xác", 400);
@@ -41,7 +41,7 @@ export const login = async (req, res) => {
       return errorResponse(res, "Email và mật khẩu là bắt buộc", 400);
     }
 
-    const user = await User.findOne({ email });
+    const user = await userModel.findOne({ email });
 
     if (!user) {
       return errorResponse(res, "Email hoặc mật khẩu không chính xác", 401);
@@ -82,7 +82,7 @@ export const login = async (req, res) => {
 // Get current user info (refresh user data)
 export const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select("-password");
+    const user = await userModel.findById(req.user._id).select("-password");
 
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
@@ -146,6 +146,20 @@ export const registerPartner = async (req, res) => {
     });
 
     await newUser.save();
+
+    // Create notification for admin
+    const admins = await userModel.find({ role: "admin" }).select("_id");
+
+    const notifications = admins.map((admin) => ({
+      recipient: admin._id,
+      sender: newUser._id,
+      title: "Đối tác mới đăng ký",
+      message: `Đối tác ${businessName} vừa mới đăng ký gói ${partnerTier}`,
+      type: "NEW_PARTNER",
+      relatedId: newUser._id,
+    }));
+
+    await Promise.all(notifications.map((n) => createNotificaiton(n)));
 
     return successResponse(
       res,

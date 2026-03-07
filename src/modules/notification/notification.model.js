@@ -37,7 +37,7 @@ const notificationSchema = new mongoose.Schema(
     },
     onModel: {
       type: String,
-      enum: ["Service", "Post"],
+      enum: ["Service", "Post", "User"],
     },
     isRead: {
       type: Boolean,

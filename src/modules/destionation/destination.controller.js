@@ -63,7 +63,6 @@ export const getDestinationDetail = async (req, res) => {
     const { slug } = req.params;
     const destination = await destinationModel.findOne({
       code: slug,
-      isActive: true,
     });
 
     if (!destination) {
@@ -95,6 +94,7 @@ export const getDestinationDetail = async (req, res) => {
       slug: destination.code,
       title: destination.name,
       posts: formattedPosts,
+      isActive: destination.isActive,
     });
   } catch (error) {
     console.error("Lỗi lấy chi tiết destination:", error);
