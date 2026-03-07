@@ -50,7 +50,7 @@ export const getAcitveDestinations = async (req, res) => {
 
     res.status(200).json(destinations);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       message: "Lỗi hẹ thống khi lấy danh sách tỉnh thành",
       error: error.message,
@@ -63,7 +63,6 @@ export const getDestinationDetail = async (req, res) => {
     const { slug } = req.params;
     const destination = await destinationModel.findOne({
       code: slug,
-      isActive: true,
     });
 
     if (!destination) {
@@ -95,6 +94,7 @@ export const getDestinationDetail = async (req, res) => {
       slug: destination.code,
       title: destination.name,
       posts: formattedPosts,
+      isActive: destination.isActive,
     });
   } catch (error) {
     console.error("Lỗi lấy chi tiết destination:", error);

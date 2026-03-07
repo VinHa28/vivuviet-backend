@@ -27,6 +27,7 @@ const notificationSchema = new mongoose.Schema(
         "POST_APPROVE",
         "POST_REJECT",
         "NEW_PROPOSAL",
+        "NEW_PARTNER",
         "SYSTEM",
       ],
       required: true,
@@ -36,7 +37,7 @@ const notificationSchema = new mongoose.Schema(
     },
     onModel: {
       type: String,
-      enum: ["Service", "Post"],
+      enum: ["Service", "Post", "User"],
     },
     isRead: {
       type: Boolean,

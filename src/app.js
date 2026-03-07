@@ -1,8 +1,11 @@
 import express from "express";
 import cors from "cors";
 import routes from "./routes/index.js";
+import multer from "multer";
 
 const app = express();
+
+const storage = multer.memoryStorage(); // Lưu tạm file vào RAM
 
 // Lấy danh sách origin từ .env, nếu không có thì mặc định là localhost
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
@@ -23,7 +26,7 @@ const corsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200, // Đảm bảo các trình duyệt cũ (IE11) không bị lỗi 204
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));

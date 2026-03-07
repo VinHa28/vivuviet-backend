@@ -284,7 +284,7 @@ export const getAllPosts = async (req, res) => {
       .populate("createdBy");
     res.status(200).json(posts);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res
       .statua(500)
       .json({ message: "Lỗi hệ thống khi lấy danh sách bài đăng" });

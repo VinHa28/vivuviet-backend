@@ -9,16 +9,27 @@ import {
   getPartnerService,
   getPartnerStats,
 } from "./admin.controller.js";
+import { loginAdmin } from "../auth/auth.controller.js";
+import { getAllUsers } from "../user/user.controller.js";
 
 const router = express.Router();
 
 router.get("/stats", protect, adminOnly, getAdminStats);
+router.post("/login", loginAdmin);
 
+// Services
 router.get("/services", protect, adminOnly, adminGetServices);
+
+// Users/Partners
 router.get("/partners", protect, adminOnly, getAllPartners);
 router.get("/partners/:id", protect, adminOnly, getPartnerStats);
 router.get("/partners/:id/services", protect, adminOnly, getPartnerService);
+router.get("/users", protect, adminOnly, getAllUsers);
+
+// Posts
 router.get("/posts", protect, adminOnly, getAllPosts);
 router.post("/posts", protect, adminOnly, createPost);
+
+// Notifications
 
 export default router;
