@@ -10,6 +10,36 @@ import {
 import userModel from "../user/user.model.js";
 import serviceModel from "../service/service.model.js";
 import postModel from "../post/post.model.js";
+import destinationModel from "../destionation/destination.model.js";
+import { sendApprovalEmail } from "../../utils/emailService.js";
+
+export const approvePartner = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) return errorResponse(res, "Đối tác này không tồn tại", 404);
+
+    user.status = status;
+
+    if (status === "active") {
+      user.subscription.startDate = new Date();
+    }
+
+    await user.save();
+    sendApprovalEmail(user.email, user.businessName, status).catch((err) =>
+      console.error("Email error:", err),
+    );
+    return successResponse(
+      res,
+      { id: user._id, status: user.status },
+      `Đã ${status === "active" ? "phê duyệt" : "từ chối"} đối tác thành công`,
+    );
+  } catch (error) {
+    console.error("Approval error:", error);
+    return errorResponse(res, "Lỗi hệ thống khi phê duyệt đối tác", 500, error);
+  }
+};
 
 export const adminGetServices = async (req, res) => {
   try {
@@ -89,41 +119,6 @@ export const getAdminStats = async (req, res) => {
   }
 };
 
-export const updateServiceStatus = async (req, res) => {
-  try {
-    const { serviceId } = req.params;
-    const { status, rejectionReason } = req.body;
-
-    const service = await Service.findById(serviceId);
-
-    if (!service) {
-      return errorResponse(res, "Không tìm thấy dịch vụ", 404);
-    }
-
-    service.status = status;
-
-    if (status === "rejected" && rejectionReason) {
-      service.rejectionReason = rejectionReason;
-    }
-
-    await service.save();
-
-    return successResponse(
-      res,
-      service,
-      `Dịch vụ đã được ${status === "approved" ? "duyệt" : "từ chối"}`,
-    );
-  } catch (error) {
-    console.error("Error updating service status:", error);
-    return errorResponse(
-      res,
-      "Lỗi khi cập nhật trạng thái dịch vụ",
-      500,
-      error,
-    );
-  }
-};
-
 export const getAllPartners = async (req, res) => {
   try {
     const partners = await User.aggregate([
@@ -194,88 +189,6 @@ export const getAllPartners = async (req, res) => {
   }
 };
 
-export const getPartnerStats = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const partnerInfo = await userModel.findById(id).select("-password");
-    if (!partnerInfo)
-      return res.status(404).json({ message: "Không tìm thấy đối tác này" });
-
-    const [serviceStats, postStats] = await Promise.all([
-      serviceModel.aggregate([
-        { $match: { partner: partnerInfo._id } },
-        {
-          $group: {
-            _id: null,
-            totalServices: { $sum: 1 },
-            activeServices: {
-              $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] },
-            },
-            pendingServices: {
-              $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] },
-            },
-            totalViews: { $sum: "$views" },
-            avgPrice: { $avg: "$priceFrom" },
-          },
-        },
-      ]),
-
-      postModel.aggregate([
-        { $match: { createdBy: partnerInfo._id, postType: "partner" } },
-        {
-          $group: {
-            _id: null,
-            totalPosts: { $sum: 1 },
-            approvedPosts: {
-              $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] },
-            },
-          },
-        },
-      ]),
-    ]);
-
-    const stats = {
-      services: serviceStats[0] || {
-        totalServices: 0,
-        activeServices: 0,
-        pendingServices: 0,
-        totalViews: 0,
-        avgPrice: 0,
-      },
-      posts: postStats[0] || {
-        totalPosts: 0,
-        approvedPosts: 0,
-      },
-    };
-    res.status(200).json({
-      success: true,
-      partner: partnerInfo,
-      statistics: stats,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Lỗi hệ thống khi lấy thông tin Đối tác",
-    });
-  }
-};
-
-export const getPartnerService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const partner = await userModel.findById(id);
-    if (!partner)
-      return res.status(404).json({ message: "Đôi tác không tồn tại" });
-    const services = await serviceModel.find({ partner: partner._id });
-    res.status(200).json(services);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Lỗi hệ thống khi lấy thông tin đối tác",
-    });
-  }
-};
-
 export const getAllPosts = async (req, res) => {
   try {
     const posts = await postModel
@@ -304,9 +217,7 @@ export const createPost = async (req, res) => {
     } = req.body;
 
     if (!title || !content) {
-      return res
-        .status(400)
-        .json({ message: "Tiêu đề và nội dung không được để trống" });
+      return errorResponse(res, "Tiêu đề và nội dung không được để trống", 400);
     }
 
     let createdBy = req.user._id;
@@ -324,13 +235,96 @@ export const createPost = async (req, res) => {
       status: "approved",
     });
 
-    res.status(201).json({
-      message: "Tạo bài viết thành công",
-      data: newPost,
+    return successResponse(res, newPost, "Tạo bài viết thành công", 201);
+  } catch (error) {
+    return errorResponse(res, "Lỗi hệ thống khi tạo bài đăng", 500, error);
+  }
+};
+
+export const getPartnerDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [partner, services, posts] = await Promise.all([
+      userModel.findById(id).select("-password"),
+      serviceModel.find({ partnerId: id }).populate("destination", "name"),
+      postModel
+        .find({ createdBy: id, postType: "partner" })
+        .populate("destination", "name"),
+    ]);
+
+    if (!partner) return errorResponse(res, "Không tìm thấy đối tác", 404);
+
+    const statistics = {
+      services: {
+        total: services.length,
+        active: services.filter((s) => s.status === "approved").length,
+        pending: services.filter((s) => s.status === "pending").length,
+        totalViews: services.reduce((sum, s) => sum + (s.views || 0), 0),
+      },
+      posts: {
+        total: posts.length,
+        approved: posts.filter((p) => p.status === "approved").length,
+        pending: posts.filter((p) => p.status === "pending").length,
+      },
+    };
+
+    return res.status(200).json({
+      partner,
+      services,
+      posts,
+      statistics,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Lỗi hệ thống khi tạo bài đăng", error: error.message });
+    return errorResponse(
+      res,
+      "Lỗi hệ thống khi lấy thông tin đối tác",
+      500,
+      error,
+    );
+  }
+};
+
+export const getDestinations = async (req, res) => {
+  try {
+    const destinations = await destinationModel.find();
+    res.status(200).json({ destinations });
+  } catch (error) {
+    return errorResponse(
+      res,
+      "Lỗi hệ thống khi lấy thông danh sách tỉnh thành",
+      500,
+      error,
+    );
+  }
+};
+
+export const updateDestination = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    console.log(slug);
+    const updateData = req.body;
+
+    const updatingDestination = await destinationModel.findOne({ code: slug });
+    if (!updatingDestination)
+      return errorResponse(res, "Địa điểm này không tồn tại", 404);
+    const updatedDestination = await destinationModel.findByIdAndUpdate(
+      updatingDestination._id,
+      { $set: updateData },
+      { new: true, runValidators: true },
+    );
+
+    return successResponse(
+      res,
+      updatedDestination,
+      "Cập nhật địa điểm thành công",
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      "Lỗi hệ thống khi lấy cập nhật thông tin tỉnh thành",
+      500,
+      error,
+    );
   }
 };
