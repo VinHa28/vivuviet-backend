@@ -12,68 +12,11 @@ import serviceModel from "../service/service.model.js";
 import postModel from "../post/post.model.js";
 import destinationModel from "../destionation/destination.model.js";
 import { sendApprovalEmail } from "../../utils/emailService.js";
+import { uploadToCloudinary } from "../../middlewares/uploadMiddleware.js";
+import cloudinary from "../../config/cloudinaryConfig.js";
+import { getPublicIdFromUrl } from "../../utils/cloudinary.js";
 
-export const approvePartner = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { status } = req.body;
-    const user = await userModel.findById(userId);
-    if (!user) return errorResponse(res, "Đối tác này không tồn tại", 404);
-
-    user.status = status;
-
-    if (status === "active") {
-      user.subscription.startDate = new Date();
-    }
-
-    await user.save();
-    sendApprovalEmail(user.email, user.businessName, status).catch((err) =>
-      console.error("Email error:", err),
-    );
-    return successResponse(
-      res,
-      { id: user._id, status: user.status },
-      `Đã ${status === "active" ? "phê duyệt" : "từ chối"} đối tác thành công`,
-    );
-  } catch (error) {
-    console.error("Approval error:", error);
-    return errorResponse(res, "Lỗi hệ thống khi phê duyệt đối tác", 500, error);
-  }
-};
-
-export const adminGetServices = async (req, res) => {
-  try {
-    const { status, type, destinationId, page = 1, limit = 10 } = req.query;
-
-    let query = {};
-
-    if (status) query.status = status;
-    if (type) query.type = type;
-    if (destinationId) query.destination = destinationId;
-
-    const skip = (page - 1) * limit;
-
-    const services = await Service.find(query)
-      .populate("partner", "businessName email partnerTier")
-      .populate("destination", "name")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Service.countDocuments(query);
-
-    return paginatedResponse(
-      res,
-      services,
-      { total, page: parseInt(page), limit: parseInt(limit) },
-      "Lấy danh sách dịch vụ thành công",
-    );
-  } catch (error) {
-    console.error("Error fetching services:", error);
-    return errorResponse(res, "Lỗi khi lấy danh sách dịch vụ", 500, error);
-  }
-};
-
+// Stats
 export const getAdminStats = async (req, res) => {
   try {
     const totalServices = await Service.countDocuments({ status: "approved" });
@@ -116,6 +59,35 @@ export const getAdminStats = async (req, res) => {
   } catch (error) {
     console.error("Error getting stats:", error);
     return errorResponse(res, "Lỗi khi lấy thống kê", 500, error);
+  }
+};
+
+// Partner management
+export const approvePartner = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) return errorResponse(res, "Đối tác này không tồn tại", 404);
+
+    user.status = status;
+
+    if (status === "active") {
+      user.subscription.startDate = new Date();
+    }
+
+    await user.save();
+    sendApprovalEmail(user.email, user.businessName, status).catch((err) =>
+      console.error("Email error:", err),
+    );
+    return successResponse(
+      res,
+      { id: user._id, status: user.status },
+      `Đã ${status === "active" ? "phê duyệt" : "từ chối"} đối tác thành công`,
+    );
+  } catch (error) {
+    console.error("Approval error:", error);
+    return errorResponse(res, "Lỗi hệ thống khi phê duyệt đối tác", 500, error);
   }
 };
 
@@ -189,58 +161,6 @@ export const getAllPartners = async (req, res) => {
   }
 };
 
-export const getAllPosts = async (req, res) => {
-  try {
-    const posts = await postModel
-      .find()
-      .populate("destinationId")
-      .populate("createdBy");
-    res.status(200).json(posts);
-  } catch (error) {
-    console.error(error);
-    res
-      .statua(500)
-      .json({ message: "Lỗi hệ thống khi lấy danh sách bài đăng" });
-  }
-};
-
-export const createPost = async (req, res) => {
-  try {
-    const {
-      destinationId,
-      title,
-      content,
-      banner,
-      gallery,
-      relatedArticles,
-      postedDate,
-    } = req.body;
-
-    if (!title || !content) {
-      return errorResponse(res, "Tiêu đề và nội dung không được để trống", 400);
-    }
-
-    let createdBy = req.user._id;
-    const postType = "system";
-    const newPost = await postModel.create({
-      destinationId: destinationId,
-      title,
-      content,
-      banner,
-      postType,
-      createdBy,
-      gallery,
-      relatedArticles: [],
-      postedDate: postedDate || new Date(),
-      status: "approved",
-    });
-
-    return successResponse(res, newPost, "Tạo bài viết thành công", 201);
-  } catch (error) {
-    return errorResponse(res, "Lỗi hệ thống khi tạo bài đăng", 500, error);
-  }
-};
-
 export const getPartnerDetails = async (req, res) => {
   try {
     const { id } = req.params;
@@ -285,6 +205,285 @@ export const getPartnerDetails = async (req, res) => {
   }
 };
 
+// Services
+export const adminGetServices = async (req, res) => {
+  try {
+    const { status, type, destinationId, page = 1, limit = 10 } = req.query;
+
+    let query = {};
+
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (destinationId) query.destination = destinationId;
+
+    const skip = (page - 1) * limit;
+
+    const services = await Service.find(query)
+      .populate("partner", "businessName email partnerTier")
+      .populate("destination", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Service.countDocuments(query);
+
+    return paginatedResponse(
+      res,
+      services,
+      { total, page: parseInt(page), limit: parseInt(limit) },
+      "Lấy danh sách dịch vụ thành công",
+    );
+  } catch (error) {
+    console.error("Error fetching services:", error);
+    return errorResponse(res, "Lỗi khi lấy danh sách dịch vụ", 500, error);
+  }
+};
+
+// Posts
+export const getAllPosts = async (req, res) => {
+  try {
+    const posts = await postModel
+      .find()
+      .populate("destinationId")
+      .populate("createdBy");
+    res.status(200).json(posts);
+  } catch (error) {
+    console.error(error);
+    res
+      .statua(500)
+      .json({ message: "Lỗi hệ thống khi lấy danh sách bài đăng" });
+  }
+};
+
+export const createPost = async (req, res) => {
+  try {
+    const {
+      destinationId,
+      title,
+      content,
+      bannerTitle,
+      bannerAlt,
+      postedDate,
+    } = req.body;
+
+    if (!destinationId)
+      return errorResponse(res, "Địa điểm cho bài viết này là bắt buộc", 400);
+
+    if (!title || !content) {
+      return errorResponse(res, "Tiêu đề và nội dung không được để trống", 400);
+    }
+
+    // Hanlde upload banner
+    let bannerData = { title: bannerTitle, alt: bannerAlt, image: "" };
+
+    if (req.files && req.files["bannerImage"]) {
+      const result = await uploadToCloudinary(
+        req.files["bannerImage"][0].buffer,
+        "vivuviet/banners",
+      );
+
+      bannerData.image = result.secure_url;
+    }
+
+    let galleryData = [];
+    if (req.files && req.files["galleryImages"]) {
+      const uploadPromises = req.files["galleryImages"].map((file, index) => {
+        const altKey = `galleryAlt_${index}`;
+        const altText = req.body[altKey] || "";
+
+        return uploadToCloudinary(file.buffer, "vivuviet/gallery").then(
+          (res) => ({
+            image: res.secure_url,
+            alt: altText,
+          }),
+        );
+      });
+      galleryData = await Promise.all(uploadPromises);
+    }
+
+    // Save to database
+    const createdBy = req.user._id;
+    const postType = "system";
+
+    const newPost = await postModel.create({
+      destinationId,
+      title,
+      content,
+      banner: bannerData,
+      gallery: galleryData,
+      postType,
+      relatedArticles: [],
+      postedDate: postedDate || new Date(),
+      createdBy,
+      status: "approved",
+    });
+
+    return successResponse(res, newPost, "Tạo bài viết thành công", 201);
+  } catch (error) {
+    return errorResponse(res, "Lỗi hệ thống khi tạo bài đăng", 500, error);
+  }
+};
+
+export const updatePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      content,
+      bannerTitle,
+      bannerAlt,
+      existingGallery, // Danh sách ảnh cũ khách muốn giữ lại (dạng chuỗi JSON)
+      galleryAlts,
+    } = req.body;
+
+    // 1. Kiểm tra bài viết tồn tại
+    const post = await postModel.findById(id);
+    if (!post) {
+      return errorResponse(res, "Không tìm thấy bài viết", 404);
+    }
+
+    // 2. Chuẩn bị dữ liệu cập nhật (Loại bỏ hoàn toàn destinationId)
+    let updateData = {
+      title: title || post.title,
+      content: content || post.content,
+    };
+
+    // 3. Xử lý cập nhật Banner (nếu có file mới)
+    if (req.files && req.files["bannerImage"]) {
+      const result = await uploadToCloudinary(
+        req.files["bannerImage"][0].buffer,
+        "vivuviet/banners",
+      );
+      updateData.banner = {
+        title: bannerTitle || post.banner.title,
+        image: result.secure_url,
+        alt: bannerAlt || post.banner.alt,
+      };
+    } else {
+      // Nếu không upload ảnh mới, chỉ cập nhật text của banner
+      updateData.banner = {
+        ...post.banner,
+        title: bannerTitle || post.banner.title,
+        alt: bannerAlt || post.banner.alt,
+      };
+    }
+
+    // 4. Xử lý Gallery
+    // Phân tích danh sách ảnh cũ gửi từ FE (những ảnh người dùng không xóa)
+    let updatedGallery = [];
+    if (existingGallery) {
+      updatedGallery = JSON.parse(existingGallery);
+    }
+
+    // Upload thêm ảnh mới vào mảng gallery (nếu có)
+    if (req.files && req.files["galleryImages"]) {
+      const newUploads = await Promise.all(
+        req.files["galleryImages"].map((file, index) => {
+          const altText = Array.isArray(galleryAlts)
+            ? galleryAlts[index]
+            : galleryAlts;
+          return uploadToCloudinary(file.buffer, "vivuviet/gallery").then(
+            (res) => ({
+              image: res.secure_url,
+              alt: altText || "",
+            }),
+          );
+        }),
+      );
+      updatedGallery = [...updatedGallery, ...newUploads];
+    }
+
+    updateData.gallery = updatedGallery;
+
+    // 5. Tiến hành cập nhật
+    const updatedPost = await postModel.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true },
+    );
+
+    return successResponse(res, updatedPost, "Cập nhật bài viết thành công");
+  } catch (error) {
+    console.error("Update Post Error:", error);
+    return errorResponse(res, "Lỗi khi cập nhật bài viết", 500, error.message);
+  }
+};
+
+export const deletePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const post = await postModel.findById(id);
+    if (!post) {
+      return errorResponse(res, "Không tìm thấy bài đăng để xóa", 404);
+    }
+
+    const publicIdsToDelete = [];
+
+    if (post.banner?.image) {
+      const bannerId = getPublicIdFromUrl(post.banner.image);
+      if (bannerId) publicIdsToDelete.push(bannerId);
+    }
+
+    if (post.gallery && post.gallery.length > 0) {
+      post.gallery.forEach((item) => {
+        const galleryId = getPublicIdFromUrl(item.image);
+        if (galleryId) publicIdsToDelete.push(galleryId);
+      });
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await Promise.all(
+        publicIdsToDelete.map((publicId) =>
+          cloudinary.uploader.destroy(publicId),
+        ),
+      );
+    }
+
+    await postModel.findByIdAndDelete(id);
+
+    return successResponse(
+      res,
+      null,
+      "Đã xóa bài viết và toàn bộ hình ảnh liên quan",
+    );
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, "Lỗi khi xóa bài viết", 500, error.message);
+  }
+};
+
+export const updatePostStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const validStatuses = ["pending", "approved", "rejected"];
+    if (!validStatuses.includes(status)) {
+      return errorResponse(res, "Trạng thái không hợp lệ", 400);
+    }
+    const updatedPost = await postModel.findByIdAndUpdate(
+      id,
+      {
+        status: status,
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+    if (!updatedPost) {
+      return errorResponse(res, "Không tìm thấy bài đăng", 404);
+    }
+    const message =
+      status === "approved" ? "Đã phê duyệt bài viết" : "Đã từ chối bài viết";
+    return successResponse(res, updatedPost, message);
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, "Lỗi khi cập nhật trạng thái", 500, error);
+  }
+};
+
+// Destinations
 export const getDestinations = async (req, res) => {
   try {
     const destinations = await destinationModel.find();
@@ -302,7 +501,6 @@ export const getDestinations = async (req, res) => {
 export const updateDestination = async (req, res) => {
   try {
     const { slug } = req.params;
-    console.log(slug);
     const updateData = req.body;
 
     const updatingDestination = await destinationModel.findOne({ code: slug });
