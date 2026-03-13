@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development node src/server.js",
+    "dev": "cross-env NODE_ENV=development nodemon src/server.js",
     "start": "cross-env NODE_ENV=production node src/server.js"
   },
   "repository": {
@@ -30,7 +30,9 @@
     "mongoose": "^9.1.5",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
-    "nodemailer": "^8.0.1",
-    "nodemon": "^3.1.11"
+    "nodemailer": "^8.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
