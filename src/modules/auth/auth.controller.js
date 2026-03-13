@@ -180,3 +180,4 @@ export const registerPartner = async (req, res) => {
     return errorResponse(res, "Lỗi hệ thống", 500, error);
   }
 };
+
