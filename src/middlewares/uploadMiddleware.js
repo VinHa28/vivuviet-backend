@@ -34,4 +34,14 @@ const uploadToCloudinary = (fileBuffer, folderName = "vivuviet_uploads") => {
   });
 };
 
-export { upload, uploadToCloudinary };
+const deleteFromCloudinary = async (publicId) => {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result;
+  } catch (error) {
+    console.error("Lỗi khi xóa ảnh trên Cloudinary:", error);
+    throw error;
+  }
+};
+
+export { upload, uploadToCloudinary, deleteFromCloudinary };

@@ -22,7 +22,10 @@ const serviceSchema = new mongoose.Schema(
     },
     description: String,
     highlights: [String],
-    images: [String],
+    image: {
+      type: String,
+      required: true,
+    },
 
     priceFrom: Number,
     priceTo: Number,
@@ -44,7 +47,7 @@ const serviceSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "pendding_update"],
+      enum: ["pending", "approved", "rejected", "pending_update"],
       default: "pending",
     },
 
@@ -55,7 +58,7 @@ const serviceSchema = new mongoose.Schema(
 
     views: { type: Number, default: 0 },
 
-    peddingUpdates: {
+    pendingUpdates: {
       name: String,
       description: String,
       images: [String],
