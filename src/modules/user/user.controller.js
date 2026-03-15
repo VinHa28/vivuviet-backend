@@ -47,36 +47,38 @@ export const getPartnerDashboardData = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Truy vấn song song để tiết kiệm thời gian
-    const [user, services, posts] = await Promise.all([
-      userModel.findById(userId).select("-password"), // Lấy profile (bỏ password)
-      serviceModel.find({ partner: userId }).sort({ createdAt: -1 }), // Lấy danh sách dịch vụ
-      postModel
-        .find({ createdBy: userId, postType: "partner" })
-        .sort({ createdAt: -1 }), // Lấy danh sách bài đăng
-    ]);
+    const [user, totalServices, totalPosts, serviceViewsAggregate] =
+      await Promise.all([
+        userModel.findById(userId).select("-password"),
+        serviceModel.countDocuments({ partner: userId }),
+        postModel.countDocuments({ createdBy: userId, postType: "partner" }),
+        serviceModel.aggregate([
+          { $match: { partner: userId } },
+          { $group: { _id: null, totalViews: { $sum: "$views" } } },
+        ]),
+      ]);
 
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
 
-    // Trả về tổng hợp dữ liệu cho Dashboard
+    const totalViews =
+      serviceViewsAggregate.length > 0
+        ? serviceViewsAggregate[0].totalViews
+        : 0;
+
     return successResponse(
       res,
       {
         profile: user,
-        services: services,
-        posts: posts,
         stats: {
-          totalServices: services.length,
-          totalPosts: posts.length,
-          activeServices: services.filter((s) => s.status === "approved")
-            .length,
-          pendingServices: services.filter((s) => s.status === "pending")
-            .length,
+          totalServices,
+          totalPosts,
+          totalViews,
         },
       },
       "Lấy dữ liệu Dashboard thành công",
+      200,
     );
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
