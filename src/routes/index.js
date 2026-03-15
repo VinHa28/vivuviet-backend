@@ -7,6 +7,7 @@ import destinationRoutes from "../modules/destionation/destination.route.js";
 import serviceRoutes from "../modules/service/service.route.js";
 import notificationRoutes from "../modules/notification/notification.route.js";
 import { adminOnly, protect } from "../middlewares/authMiddleware.js";
+import postRouter from "../modules/post/post.route.js";
 
 const router = Router();
 
@@ -30,5 +31,8 @@ router.use("/users", userRoutes);
 
 // Admin routes (consolidated)
 router.use("/admin", adminRoutes);
+
+// Post
+router.use("/posts", postRouter);
 
 export default router;
