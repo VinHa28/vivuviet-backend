@@ -45,7 +45,7 @@ export const getAcitveDestinations = async (req, res) => {
   try {
     const destinations = await destinationModel
       .find({ isActive: true })
-      .select("_id name")
+      .select("_id name code")
       .sort({ name: 1 });
 
     res.status(200).json(destinations);
